@@ -14,11 +14,16 @@ interface Book {
   stock: number;
 }
 
+const ITEMS_PER_PAGE = 10; // Definir quantos itens por página
+
 export default function Books() {
   const [books, setBooks] = useState<Book[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editBookId, setEditBookId] = useState<string | null>(null);
+  const [deleteBookId, setDeleteBookId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchBooks = async () => {
     try {
@@ -33,20 +38,31 @@ export default function Books() {
     fetchBooks();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir este livro?")) return;
+  const handleDelete = async () => {
+    if (!deleteBookId) return;
     try {
-      await api.delete(`/books/${id}`);
+      await api.delete(`/books/${deleteBookId}`);
       toast.success("Livro excluído com sucesso");
+      setShowDeleteModal(false);
       fetchBooks();
     } catch {
       toast.error("Erro ao excluir livro");
+      setShowDeleteModal(false);
     }
   };
 
   const filteredBooks = books.filter((book) =>
     `${book.title} ${book.author}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Função para paginar os livros
+  const paginatedBooks = filteredBooks.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Número total de páginas
+  const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
 
   return (
     <div className="p-8 relative">
@@ -80,7 +96,7 @@ export default function Books() {
           </tr>
         </thead>
         <tbody>
-          {filteredBooks.map((book) => (
+          {paginatedBooks.map((book) => (
             <tr key={book.id} className="text-center">
               <td className="border px-4 py-2">{book.title}</td>
               <td className="border px-4 py-2">{book.author}</td>
@@ -95,7 +111,10 @@ export default function Books() {
                   Editar
                 </button>
                 <button
-                  onClick={() => handleDelete(book.id)}
+                  onClick={() => {
+                    setDeleteBookId(book.id);
+                    setShowDeleteModal(true);
+                  }}
                   className="text-red-600 hover:underline"
                 >
                   Excluir
@@ -120,6 +139,59 @@ export default function Books() {
           onSuccess={fetchBooks}
         />
       )}
+
+      {/* Modal de confirmação de exclusão */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded shadow-md w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-4">Confirmar Exclusão</h2>
+            <p className="mb-4">Tem certeza que deseja excluir este livro?</p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paginação */}
+      <div className="flex justify-between mt-4">
+        <button
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
+          disabled={currentPage === 1}
+        >
+          Anterior
+        </button>
+        <span className="flex items-center gap-2">
+          Página {currentPage} de {totalPages}
+        </span>
+        <button
+          onClick={() =>
+            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+          }
+          className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
+          disabled={currentPage === totalPages}
+        >
+          Próxima
+        </button>
+      </div>
     </div>
   );
 }
