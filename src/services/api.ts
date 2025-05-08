@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 // Criar instância do axios
 export const api = axios.create({
-  baseURL: "http://localhost:3333",
+  baseURL: "https://livraria-backend.onrender.com",
 });
 
 // Se o token estiver no localStorage, adiciona ao header Authorization
